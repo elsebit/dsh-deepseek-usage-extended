@@ -1064,3 +1064,25 @@ test('lang 参数：只有中文标签用中文，其它语言与缺省都用英
     assert.deepEqual(res.body.errors, [expected], url);
   }
 });
+
+test('IKunCode relay adapter populates the existing price row contract', async () => {
+  resetFetch();
+  fetchRoutes['api.ikuncode.cc'] = async (url) => {
+    if (String(url).endsWith('/api/usage/token/')) return Response.json({ code: true, data: { user_quota: { total_available: 1000000 } } });
+    if (String(url).endsWith('/api/status')) return Response.json({ success: true, data: { quota_per_unit: 500000, quota_display_type: 'CNY', usd_exchange_rate: 1 } });
+    if (String(url).endsWith('/api/log/token')) return Response.json({ success: true, data: [{ type: 2, model_name: 'relay-test', group: 'sample', created_at: Math.floor(Date.now() / 1000) }] });
+    return Response.json({ success: true, group_ratio: { sample: 0.25 }, data: [{ model_name: 'relay-test', quota_type: 0, enable_groups: ['sample'], billing_mode: 'tiered_expr', billing_expr: 'tier("base", p * 2 + cr * 0.1 + c * 10)' }] });
+  };
+  const { ctx, routes } = makeCtx({ provider: 'relay-custom', model: 'relay-test', refs: { RELAY_CUSTOM_API_KEY: 'synthetic-relay-host-key' } });
+  apply(ctx, { providerAliases: [{ provider: 'relay-custom', capability: 'ikuncode', refs: [] }] });
+  const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
+  assert.equal(res.body.balance.total, 2);
+  assert.equal(res.body.tier.input, 0.5);
+  assert.equal(res.body.tier.cacheRead, 0.025);
+  assert.equal(res.body.tier.output, 2.5);
+  assert.equal(res.body.tier.known, true);
+  assert.equal(res.body.tier.window, null);
+  assert.match(res.body.tier.note, /last-used group sample/);
+  assert.deepEqual(res.body.errors, []);
+  assert.equal(JSON.stringify(res.body).includes('synthetic-relay-host-key'), false);
+});

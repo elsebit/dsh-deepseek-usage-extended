@@ -20,6 +20,14 @@ Open the extension's usage settings and map your custom provider route to `ikunc
 
 The reader sends GET requests only to `https://api.ikuncode.cc/api/usage/token/`, with Bearer authentication and redirects disabled. It uses `data.user_quota.total_available`, never the token's remaining limit. Missing account quota displays a query error, not a fabricated zero. The site-specific conversion is 500000 quota per CNY, verified on 2026-11-11; it must be reviewed if the site's billing configuration changes. Official model prices and peak/off-peak rules are not applied to IKunCode.
 
+## Relay price display
+
+IKunCode uses the existing three-value price row: uncached input, cached input, and output, per million tokens in CNY. No separate quote table is added. Prices combine the current public model rules with the most recent consumption group for the exact model, observed within 24 hours. Hovering the price row identifies the last-used group and warns that account discounts or routing changes may differ. A historical group is not a live token configuration lookup or a guarantee of the next request's rate.
+
+The host reads `/api/pricing`, `/api/status`, and `/api/log/token` from the fixed IKunCode origin, with redirects disabled. Only the log request carries the mapped API key. Raw logs are neither sent to the browser nor stored on disk. Normalized results are cached for one minute. Missing group evidence, unsupported currency, ambiguous models, or unrecognized context/time-dependent billing expressions hide the price row without breaking balance queries. Only validated linear expressions and standard ratio billing are supported.
+
+Relay pricing lives in `lib/relay-pricing.js`, separate from official price snapshots and the UI. New relays require explicit endpoint allowlists and provider-specific normalization; no arbitrary server expressions are executed.
+
 ## Migration from the original or standalone plugin
 
 1. Install this extension using the active Desktop profile's plugin manager. Keep your existing model provider and credentials unchanged.
