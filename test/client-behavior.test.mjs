@@ -296,6 +296,25 @@ function makePendingFetch() {
   };
 }
 
+test('provider label follows the latest balance response', async () => {
+  const { usage } = makePendingFetch();
+  const runtime = makeRuntime();
+  const Comp = loadClient(runtime);
+  renderCard(Comp, runtime);
+  renderCard(Comp, runtime).out.props.onClick();
+  usage()[1].resolve(providerPriceResponse({ provider: { id: 'ikuncode', displayName: 'IKunCode', kind: 'balance' }, balance: { total: 12, currency: 'CNY' }, tier: { known: false, window: null } }));
+  await flush();
+  usage()[0].resolve(providerPriceResponse());
+  await flush();
+  const card = renderCard(Comp, runtime).out;
+  const label = nodesOf(card).find((n) => n.props['data-usage-provider']);
+  assert.equal(textOf(label), 'IKunCode');
+  assert.equal(label.props.title, 'IKunCode');
+  assert.equal(label.props.style.textOverflow, 'ellipsis');
+  assert.ok(textOf(card).includes('12.00'));
+  assert.ok(!textOf(card).includes('Z.ai'));
+});
+
 test('晚到的旧响应不覆盖新数据', async () => {
   const { usage } = makePendingFetch();
   const runtime = makeRuntime();
@@ -952,8 +971,8 @@ test('非 DeepSeek provider 的按量计费模型：显示单价行，全天一�
   const text = textOf(out);
   assert.ok(text.includes('0.6') && text.includes('0.11') && text.includes('2.2'), `应显示单价行，实际 ${text}`);
 
-  // 全天一价：没有倒计时、没有指示灯，只有单价行那一条悬浮说明。
-  const titles = nodesOf(out).filter((n) => n.props && typeof n.props.title === 'string').map((n) => n.props.title);
+  // 全天一价：没有倒计时、没有指示灯；除供应商名称外只剩单价行那一条悬浮说明。
+  const titles = nodesOf(out).filter((n) => n.props && !n.props['data-usage-provider'] && typeof n.props.title === 'string').map((n) => n.props.title);
   assert.equal(titles.length, 1, `只应有单价行一条说明，实际 ${JSON.stringify(titles)}`);
   assert.ok(titles[0].includes('美元'), `币种应跟价格表（USD），实际 ${titles[0]}`);
   assert.ok(!/距离|还剩/.test(titles[0]), '全天一价的模型不该出现区间倒计时');
