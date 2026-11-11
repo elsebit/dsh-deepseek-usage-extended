@@ -28,6 +28,16 @@ The host reads `/api/pricing`, `/api/status`, and `/api/log/token` from the fixe
 
 Relay pricing lives in `lib/relay-pricing.js`, separate from official price snapshots and the UI. New relays require explicit endpoint allowlists and provider-specific normalization; no arbitrary server expressions are executed.
 
+### Price interpretation
+
+The three values are uncached input, cache-read input, and output prices. Cache creation is not a fourth displayed value. Each value is per million tokens, not a total request charge. Rates are based on the public price configuration and the last observed group, not a reconciliation of account-specific discounts.
+
+A newly selected model with no recent consumption record can show a balance without a price row. The same applies to conditional billing expressions and disabled token-log access. Changing or rotating the API key invalidates the relevant price-cache identity. There is no inference request to probe the rate.
+
+### Adapter boundaries
+
+Balance and price readers have separate responsibilities. `lib/accounts.js` normalizes balances; `lib/relay-pricing.js` resolves relay prices; `lib/index.js` supplies credentials and combines results; `lib/client.js` renders the existing card. The official static price tables remain in `lib/pricing.js`. Price lookup failure must not change a successful balance into an account error.
+
 ## Migration from the original or standalone plugin
 
 1. Install this extension using the active Desktop profile's plugin manager. Keep your existing model provider and credentials unchanged.
