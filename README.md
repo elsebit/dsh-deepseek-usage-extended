@@ -2,6 +2,17 @@
 
 # dsh-deepseek-usage
 
+## Fork extension: IKunCode
+
+This fork of [dougen/dsh-deepseek-usage](https://github.com/dougen/dsh-deepseek-usage) adds an IKunCode account reader while preserving upstream functionality. The upstream npm install command below does not include this extension. This source change is not a separately published package yet.
+
+In Settings → DeepSeek Usage, map your custom IKunCode provider route to `ikuncode`. Leave credential references empty to use the route-derived reference (for example, `relay` uses `RELAY_API_KEY`), or specify the existing IKunCode credential reference explicitly. `IKUNCODE_API_KEY` is the fallback. Never map another vendor's credential to IKunCode.
+
+The reader sends a GET request to `https://api.ikuncode.cc/api/usage/token/` with Bearer authentication and redirects disabled. It displays only `data.user_quota.total_available`, not the token's remaining limit. Missing account quota produces an error instead of a fabricated balance. The site-specific conversion is 500000 quota per CNY, verified on 2026-11-11; this is not a generic New API conversion and must be updated if the site's billing configuration changes. Official model prices and peak/off-peak rules are not applied to IKunCode.
+
+The extension uses the existing provider mapping and balance card. It does not add a second card or change the UI. Keep this fork and the original plugin mutually exclusive until a separately named distribution is prepared.
+
+
 [![npm version](https://img.shields.io/npm/v/@dougen/dsh-deepseek-usage)](https://www.npmjs.com/package/@dougen/dsh-deepseek-usage)
 [![CI](https://github.com/dougen/dsh-deepseek-usage/actions/workflows/ci.yml/badge.svg)](https://github.com/dougen/dsh-deepseek-usage/actions/workflows/ci.yml)
 
