@@ -1,6 +1,6 @@
 # DeepSeek Usage Extended
 
-A fork of [dougen/dsh-deepseek-usage](https://github.com/dougen/dsh-deepseek-usage) with additional IKunCode account balance support. Upstream provider readers, model price snapshots and subscription usage features are preserved. This is not a generic adapter for every API gateway.
+A personal-use fork of [dougen/dsh-deepseek-usage](https://github.com/dougen/dsh-deepseek-usage) with additional IKunCode account balance support. Upstream provider readers, model price snapshots and subscription usage features are preserved. This is not a generic adapter for every API gateway. It is shared as-is and updated when needed.
 
 ## Install
 
