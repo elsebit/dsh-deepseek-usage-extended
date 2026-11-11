@@ -52,6 +52,25 @@ test('request boundaries, normalized caching and key rotation', async () => {
   await readRelayPricing('ikuncode', 'sample', 'synthetic-two', { fetchImpl, now }); assert.equal(count, 6);
   assert.equal(JSON.stringify(a).includes('synthetic'), false);
 });
+const tierExpression = 'len <= 272000 ? tier("short_context", p * 10 + cr * 1 + cc * 12.5 + c * 50) : tier("long_context", p * 20 + cr * 2 + cc * 25 + c * 75)';
+test('GPT context pricing selects both sides of the inclusive boundary', () => {
+  for (const [length, expected] of [[271999, [2.5, 0.25, 12.5]], [272000, [2.5, 0.25, 12.5]], [272001, [5, 0.5, 18.75]]]) {
+    const f = fixture(); f.model = f.logs[0].model_name = f.pricing.data[0].model_name = 'gpt-test';
+    f.logs[0].prompt_tokens = length; f.pricing.data[0].billing_expr = tierExpression;
+    const result = resolveIkunPricing(f);
+    assert.deepEqual([result.input, result.cacheRead, result.output], expected);
+    assert.match(result.note, /Next-request context may differ/);
+  }
+});
+test('context pricing rejects absent lengths, other protocols and unsupported syntax', () => {
+  for (const length of [undefined, null, 0, -1, 1.5, 'bad']) {
+    const f = fixture(); f.model = f.logs[0].model_name = f.pricing.data[0].model_name = 'gpt-test';
+    f.logs[0].prompt_tokens = length; f.pricing.data[0].billing_expr = tierExpression;
+    assert.equal(resolveIkunPricing(f), null);
+  }
+  const f = fixture(); f.logs[0].prompt_tokens = 300000; f.pricing.data[0].billing_expr = tierExpression;
+  assert.equal(resolveIkunPricing(f), null);
+});
 test('upstream failures are optional pricing failures, not balance errors', async () => {
   const result = await readRelayPricing('ikuncode', 'sample', 'synthetic-fail', { fetchImpl: async () => { throw new Error('secret'); }, now });
   assert.equal(result, null);
