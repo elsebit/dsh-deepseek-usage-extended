@@ -20,7 +20,7 @@ test('locale/en.json 与 locale/zh.json 提供非空的标题与描述', () => {
   }
   // 英文标题与中文标题必须真的不同，否则等于没本地化。
   assert.equal(readJson('locale/zh.json').meta.title, 'DeepSeek 用量');
-  assert.equal(readJson('locale/en.json').meta.title, 'DeepSeek Usage');
+  assert.equal(readJson('locale/en.json').meta.title, 'DeepSeek Usage Extended');
 });
 
 test('详情页正文按语言选择：中文 README.zh.md，其它语言 README.md', () => {

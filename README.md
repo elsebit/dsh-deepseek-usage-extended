@@ -1,82 +1,33 @@
-<img src="https://cdn.jsdelivr.net/npm/@dougen/dsh-deepseek-usage/icon.svg" alt="dsh-deepseek-usage icon" width="72" align="right" />
+# DeepSeek Usage Extended
 
-# dsh-deepseek-usage
+A fork of [dougen/dsh-deepseek-usage](https://github.com/dougen/dsh-deepseek-usage) with additional IKunCode account balance support. Upstream provider readers, model price snapshots and subscription usage features are preserved. This is not a generic adapter for every API gateway.
 
-## Fork extension: IKunCode
+## Install
 
-This fork of [dougen/dsh-deepseek-usage](https://github.com/dougen/dsh-deepseek-usage) adds an IKunCode account reader while preserving upstream functionality. The upstream npm install command below does not include this extension. This source change is not a separately published package yet.
-
-In Settings → DeepSeek Usage, map your custom IKunCode provider route to `ikuncode`. Leave credential references empty to use the route-derived reference (for example, `relay` uses `RELAY_API_KEY`), or specify the existing IKunCode credential reference explicitly. `IKUNCODE_API_KEY` is the fallback. Never map another vendor's credential to IKunCode.
-
-The reader sends a GET request to `https://api.ikuncode.cc/api/usage/token/` with Bearer authentication and redirects disabled. It displays only `data.user_quota.total_available`, not the token's remaining limit. Missing account quota produces an error instead of a fabricated balance. The site-specific conversion is 500000 quota per CNY, verified on 2026-11-11; this is not a generic New API conversion and must be updated if the site's billing configuration changes. Official model prices and peak/off-peak rules are not applied to IKunCode.
-
-The extension uses the existing provider mapping and balance card. It does not add a second card or change the UI. Keep this fork and the original plugin mutually exclusive until a separately named distribution is prepared.
-
-
-[![npm version](https://img.shields.io/npm/v/@dougen/dsh-deepseek-usage)](https://www.npmjs.com/package/@dougen/dsh-deepseek-usage)
-[![CI](https://github.com/dougen/dsh-deepseek-usage/actions/workflows/ci.yml/badge.svg)](https://github.com/dougen/dsh-deepseek-usage/actions/workflows/ci.yml)
-
-English | [中文](README.zh.md)
-
-A **DeepSeek Harness (DSH)** sidebar plugin that shows, right in the DSH main window, how much money or quota is left on the account behind the currently selected model, and what that model costs right now — without leaving DSH. It supports nine providers.
-
-<img src="https://cdn.jsdelivr.net/npm/@dougen/dsh-deepseek-usage/screenshot.png" alt="The sidebar card: balance, current unit prices and the billing-window dot" width="520" />
-
-*Balance mode (DeepSeek, Kimi, Z.ai, OpenRouter…): the account balance, the current model's input / cache / output unit prices, and the peak / off-peak indicator in the top-right corner.*
-
-<img src="https://cdn.jsdelivr.net/npm/@dougen/dsh-deepseek-usage/screenshot2.png" alt="Subscription usage: remaining quota per billing window" width="520" />
-
-*Subscription mode (Kimi For Coding, OpenCode, MiniMax, Claude Code / Codex…): one D-shaped gauge per usage window — the number in the middle is the remaining quota, the grey arc is what has been used, the green arc is what is left (red once 80% is used), and the badge names the window (`5H` = 5-hour, `7D` = weekly, `1M` = monthly).*
-
-## What this plugin does
-
-DSH lets you switch between many model providers, but each provider hides its account status on a different website. This plugin resolves the provider behind the model you have selected in DSH and puts a live status card for that account at the bottom of the sidebar:
-
-- **Account reading.** Two forms, depending on what the provider offers:
-  - *Balance providers* (DeepSeek, Moonshot / Kimi, Z.ai, OpenRouter) publish the account balance, so the card shows it with its currency symbol (`¥` / `$`).
-  - *Subscription providers* (Kimi For Coding, OpenCode, MiniMax, Claude Code, OpenAI Codex) publish no balance, only usage windows. The card draws one gauge per window — 5-hour, weekly, monthly, whatever the endpoint returns — and shows how much of each quota remains, turning red once 80% is used.
-  - The card always follows the selected model, so switching provider switches the reading; no per-provider setup beyond the credential.
-- **Unit prices of the current model.** The card lists input, input-cache and output prices for the billing period in effect right now, in the provider's own currency. When a provider bills by time of day — DeepSeek's official peak / off-peak schedule (Mon–Fri 09:00–12:00 and 14:00–18:00 Beijing time is peak, evenings, weekends and holidays are off-peak) or OpenRouter's time-of-day pricing — an orange / green dot marks which window is active, and hovering it shows the time left until the next switch.
-## Installation and usage
-
-**Step 1 — configure the provider's credential.** The plugin queries each provider with the key you already use for that provider: fill it on the **Models page in DSH**, or export it as an environment variable (`DEEPSEEK_API_KEY`, `MOONSHOTAI_API_KEY`, `ZAI_API_KEY`, `OPENROUTER_API_KEY`, `KIMI_CODING_API_KEY`, `OPENCODE_API_KEY`, `MINIMAX_API_KEY`, …). The `deepseek-account` route is the exception: it needs no key — sign in to DeepSeek inside DSH and the card reads that account grant.
-
-**Step 2 — install the plugin into the `web` profile:**
+Download the prebuilt `dsh-deepseek-usage-extended.tgz` from [Releases](https://github.com/elsebit/dsh-deepseek-usage-extended/releases), and install it through the Desktop plugin manager. Standalone Web profiles can use:
 
 ```sh
-dsh plugin --profile web add @dougen/dsh-deepseek-usage
+dsh plugin --profile web add https://github.com/elsebit/dsh-deepseek-usage-extended/releases/latest/download/dsh-deepseek-usage-extended.tgz
 ```
 
-**Step 3 — restart `dsh web`** and open the URL it prints. The card sits at the bottom of the sidebar, below the Cordis panel button; click it to refresh right away. Provider mappings and subscription tokens are configured in **Settings → DeepSeek Usage**; when the route behind the selected model is not supported, the card offers a **Set up mapping** button that opens that page directly.
+The package is `@elsebit/dsh-deepseek-usage-extended`. It is distributed through GitHub Releases, not currently npm. Do not install the upstream npm package expecting the extension. Desktop users should use their application's active profile. Follow the host's refresh/restart instructions and do not force incompatible versions.
 
-<details>
-<summary>Using a Claude Code / OpenAI Codex subscription (OAuth)</summary>
+The extension has separate HTTP routes, configuration IDs and sidebar slots. It does not overwrite upstream settings. Disable the original usage plugin if you want only one usage card. Existing provider mappings are not migrated automatically. The inherited OAuth credential references are shared: changing or clearing a subscription token in either plugin affects the other.
 
-An API key cannot read these subscriptions — they share an OAuth token instead. When DSH detects Claude Code or OpenAI Codex (or a provider mapping targets one of them), a token field appears in **Settings → DeepSeek Usage**, under the provider mappings. Paste the token there and the sidebar card starts reporting that subscription's remaining quota:
+## IKunCode configuration
 
-- **Claude Code** — on a machine signed in to Claude Code, copy `claudeAiOauth.accessToken` from `~/.claude/.credentials.json` (on macOS: the `Claude Code-credentials` keychain item). A token minted by `claude setup-token` also works.
-- **OpenAI Codex** — copy `tokens.access_token` from `~/.codex/auth.json` into the token field, and `tokens.account_id` into the account ID field.
+Open the extension's usage settings and map your custom provider route to `ikuncode`. Leave credential references empty to use the route-derived reference (for example, `relay` uses `RELAY_API_KEY`), or specify your existing IKunCode credential reference. `IKUNCODE_API_KEY` is the fallback. References are names, not secret values. Never map another vendor's credential or account-login grant to IKunCode.
 
-Tokens are stored through DSH's credential service (`~/.dsh/.credentials.yaml`) and never leave this machine: no response, log line or page element carries one back. The **Clear** button removes them again.
-</details>
+The reader sends GET requests only to `https://api.ikuncode.cc/api/usage/token/`, with Bearer authentication and redirects disabled. It uses `data.user_quota.total_available`, never the token's remaining limit. Missing account quota displays a query error, not a fabricated zero. The site-specific conversion is 500000 quota per CNY, verified on 2026-11-11; it must be reviewed if the site's billing configuration changes. Official model prices and peak/off-peak rules are not applied to IKunCode.
 
-<details>
-<summary>Uninstall</summary>
+## Other providers
 
-```sh
-dsh plugin --profile web remove @dougen/dsh-deepseek-usage
-```
+The card follows the selected model and preserves upstream balance readers, subscription windows, pricing and refresh behavior. Configure API keys using DSH's Models page. Claude Code and Codex subscription usage require the appropriate OAuth credentials, not a relay API key. See the [upstream documentation](https://github.com/dougen/dsh-deepseek-usage#readme) for inherited provider behavior. The included localized upstream documentation is retained for reference; use the installation instructions above for this distribution.
 
-Then restart `dsh web`.
-</details>
+## Development and releases
 
-## Supported DSH versions
+Node.js 24 or later is required for the tests. Run `npm test`. Tests use synthetic inputs and do not require real API keys. A version tag matching package.json triggers GitHub Actions to test, pack and publish a GitHub Release with a SHA256 checksum. This does not guarantee market approval or automatic client upgrades.
 
-Use a plugin version that matches your DSH:
+## Attribution and license
 
-| DSH version | Plugin version to install |
-| --- | --- |
-| `0.2.x` (from `0.2.0-rc.1` on) | `0.11.0` or later |
-| `0.1.x` (from `0.1.0-rc.6` on) | `0.10.x`, or `0.11.0` or later |
-
-Run `dsh --version` to check your DSH version. Installing without an explicit version picks the newest compatible release automatically; if the newest release does not match your DSH, pin an exact one, e.g. `@dougen/dsh-deepseek-usage@0.10.2`.
+Based on dsh-deepseek-usage by dougen and its contributors. Upstream history, notices and localized resources are retained. The upstream package declares the MIT license; see [NOTICE.md](NOTICE.md) for the provenance and licensing caveat. The extension does not claim authorship of upstream work. Not affiliated with DeepSeek or IKunCode.

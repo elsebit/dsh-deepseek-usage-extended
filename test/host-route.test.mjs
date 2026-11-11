@@ -140,7 +140,7 @@ function makeCtx(options = {}) {
 }
 
 /** 造一个最小的 req/res。 */
-function makeReq(headers = {}, url = '/api/deepseek-usage?lang=zh', method = 'GET') {
+function makeReq(headers = {}, url = '/api/deepseek-usage-extended?lang=zh', method = 'GET') {
   return { headers, url, method };
 }
 
@@ -154,7 +154,7 @@ function makePost(payload, headers = {}) {
   const response = new Response(text, { headers: { 'content-type': 'application/json', ...headers } });
   return {
     method: 'POST',
-    url: '/api/deepseek-usage/token',
+    url: '/api/deepseek-usage-extended/token',
     headers: {
       host: '127.0.0.1:64452',
       'content-type': 'application/json',
@@ -185,7 +185,7 @@ async function call(route, req) {
 test('非 GET 方法被拒绝', async () => {
   const { ctx, routes } = makeCtx();
   apply(ctx);
-  const res = await call(routes.get('/api/deepseek-usage'), makeReq({}, '/api/deepseek-usage', 'POST'));
+  const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({}, '/api/deepseek-usage-extended', 'POST'));
   assert.equal(res.status, 405);
 });
 
@@ -193,7 +193,7 @@ test('非本机 Host 被拒绝', async () => {
   const { ctx, routes } = makeCtx();
   apply(ctx);
   for (const host of ['evil.example:64452', '10.0.0.7:64452']) {
-    const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host }));
+    const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host }));
     assert.equal(res.status, 403, `${host} 应被拒绝`);
   }
 });
@@ -202,7 +202,7 @@ test('回环地址的各种写法都被接受', async () => {
   const { ctx, routes } = makeCtx();
   apply(ctx);
   for (const host of ['127.0.0.1:64452', '127.0.0.2:64452', 'localhost:64452', '[::1]:64452', '[::ffff:127.0.0.1]:64452']) {
-    const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host }));
+    const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host }));
     assert.notEqual(res.status, 403, `${host} 应被接受`);
   }
 });
@@ -210,21 +210,21 @@ test('回环地址的各种写法都被接受', async () => {
 test('监听器绑定的地址也被接受（--host 部署）', async () => {
   const { ctx, routes } = makeCtx({ bindHost: '10.0.0.7' });
   apply(ctx);
-  const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '10.0.0.7:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '10.0.0.7:64452' }));
   assert.notEqual(res.status, 403);
 });
 
 test('绑定地址是 IPv6 时同样认得出来', async () => {
   const { ctx, routes } = makeCtx({ bindHost: '::1' });
   apply(ctx);
-  const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '[::1]:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '[::1]:64452' }));
   assert.notEqual(res.status, 403);
 });
 
 test('跨站请求与异源 Origin 被拒绝', async () => {
   const { ctx, routes } = makeCtx();
   apply(ctx);
-  const route = routes.get('/api/deepseek-usage');
+  const route = routes.get('/api/deepseek-usage-extended');
   const crossSite = await call(route, makeReq({ host: '127.0.0.1:64452', 'sec-fetch-site': 'cross-site' }));
   assert.equal(crossSite.status, 403);
   const foreignOrigin = await call(route, makeReq({ host: '127.0.0.1:64452', origin: 'http://evil.example' }));
@@ -236,7 +236,7 @@ test('跨站请求与异源 Origin 被拒绝', async () => {
 test('未配置 Key 时只给出可行动的文案', async () => {
   const { ctx, routes } = makeCtx({ key: null });
   apply(ctx);
-  const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(res.status, 200);
   assert.deepEqual(res.body.errors, ['未配置 DEEPSEEK_API_KEY']);
   assert.equal(res.body.balance.total, null, '没有余额时是 null，不是 0');
@@ -245,7 +245,7 @@ test('未配置 Key 时只给出可行动的文案', async () => {
 test('Key 含非法字符时不把 Key 写进响应', async () => {
   const { ctx, routes } = makeCtx({ key: 'sk-live\nsecond-line' });
   apply(ctx);
-  const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(res.status, 200);
   assert.equal(res.body.errors.length, 1);
   assert.ok(!JSON.stringify(res.body).includes('sk-live'), '响应里不得出现 Key');
@@ -261,7 +261,7 @@ test('DeepSeek 账号路由用登录 grant 查余额，且不带 Bearer', async 
   try {
     const { ctx, routes } = makeCtx({ provider: 'deepseek-account', grant: 'grant-token-1' });
     apply(ctx);
-    const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+    const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
     assert.equal(res.status, 200);
     assert.deepEqual(res.body.errors, []);
     assert.equal(res.body.balance.total, 12.34);
@@ -276,7 +276,7 @@ test('DeepSeek 账号路由用登录 grant 查余额，且不带 Bearer', async 
 test('DeepSeek 账号路由未登录时给出可行动的文案', async () => {
   const { ctx, routes } = makeCtx({ provider: 'deepseek-account' });
   apply(ctx);
-  const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(res.status, 200);
   assert.deepEqual(res.body.errors, ['DeepSeek 账号尚未登录：在设置里登录后即可显示余额']);
   assert.equal(res.body.balance.total, null, '没有余额时是 null，不是 0');
@@ -291,7 +291,7 @@ test('api-key 路由仍按 Bearer 发送（回归）', async () => {
   try {
     const { ctx, routes } = makeCtx({ provider: 'deepseek-official', key: 'sk-plain-key' });
     apply(ctx);
-    const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+    const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
     assert.deepEqual(res.body.errors, []);
     assert.equal(seen[0].Authorization, 'Bearer sk-plain-key');
   } finally {
@@ -312,7 +312,7 @@ test('账号路由不受 DEEPSEEK_BASE_URL 影响：grant 只发往官方源', a
     // 令牌取值与其它用例不同，避开账户快照缓存的同一个桶。
     const { ctx, routes } = makeCtx({ provider: 'deepseek-account', grant: 'grant-token-relay' });
     apply(ctx);
-    const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+    const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
     assert.deepEqual(res.body.errors, []);
     assert.equal(seen.length, 1);
     // 宿主只肯把 grant 发到官方推理源；把登录令牌送给中转就是把凭据外泄。
@@ -337,7 +337,7 @@ test('api-key 路由仍遵循 DEEPSEEK_BASE_URL（账号路由的例外不扩大
   try {
     const { ctx, routes } = makeCtx({ provider: 'deepseek-official', key: 'sk-relay-key' });
     apply(ctx);
-    const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+    const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
     assert.deepEqual(res.body.errors, []);
     assert.equal(seen.length, 1);
     assert.equal(seen[0].url, 'https://relay.example/v1/user/balance');
@@ -355,7 +355,7 @@ test('上游异常不会把异常原文送到浏览器', async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => { throw new Error('connect ECONNREFUSED 10.0.0.7:443 (internal)'); };
   try {
-    const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+    const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
     assert.equal(res.status, 200);
     assert.deepEqual(res.body.errors, ['余额接口无法连接']);
     assert.ok(!JSON.stringify(res.body).includes('10.0.0.7'));
@@ -383,7 +383,7 @@ test('余额单飞按 Key 分桶：换 Key 不会复用旧 Key 的在途请求',
   const { ctx, routes } = makeCtx();
   ctx.credentials.resolve = async () => ({ value: currentKey });
   apply(ctx);
-  const route = routes.get('/api/deepseek-usage');
+  const route = routes.get('/api/deepseek-usage-extended');
 
   void call(route, makeReq({ host: '127.0.0.1:64452' })); // 挂起，不等它
   currentKey = 'sk-B';
@@ -398,14 +398,14 @@ test('放假日期表过期时宿主会告警（每天一次）', async () => {
   apply(ctx);
 
   // 表覆盖当年时不该告警。
-  await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+  await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(warnings.filter((w) => w.includes('放假日期表未覆盖')).length, 0, '表覆盖当年时不应告警');
 
   // 把时钟拨到 2027：表还没覆盖那一年，必须告警，且文案要指出该改哪个常量。
   const realNow = Date.now;
   Date.now = () => realNow.call(Date) + 400 * 86400000; // 往后推 400 天
   try {
-    await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+    await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
     const warns = warnings.filter((w) => w.includes('放假日期表未覆盖'));
     assert.equal(warns.length, 1, '表未覆盖当年时必须告警一次');
     assert.ok(warns[0].includes('HOLIDAY_TABLE_THROUGH_YEAR'), `告警文案应指出要改的常量，实际：${warns[0]}`);
@@ -421,7 +421,7 @@ test('宿主内部异常时返回 502，且不把异常原文送进响应', asyn
   const realNow = Date.now;
   Date.now = () => { throw new Error('内部故障 sk-live-SECRET-KEY 片段'); };
   try {
-    const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+    const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
     assert.equal(res.status, 502);
     assert.equal(res.body.message, '插件内部错误');
     assert.ok(!JSON.stringify(res.body).includes('SECRET'), '502 响应里不得出现异常原文');
@@ -444,7 +444,7 @@ test('余额缓存按 Key 分桶：换 Key 后不会命中旧 Key 的缓存', as
   const { ctx, routes } = makeCtx();
   ctx.credentials.resolve = async () => ({ value: currentKey });
   apply(ctx);
-  const route = routes.get('/api/deepseek-usage');
+  const route = routes.get('/api/deepseek-usage-extended');
 
   const first = await call(route, makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(first.body.balance.total, 11.11);
@@ -470,7 +470,7 @@ test('余额缺失时报错而不是伪装成 0 元', async () => {
     headers: { 'content-type': 'application/json' },
   });
   try {
-    const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+    const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
     assert.equal(res.body.balance.total, null, 'total 必须是 null');
     assert.deepEqual(res.body.errors, ['余额接口没有返回余额']);
   } finally {
@@ -487,7 +487,7 @@ test('响应体超限时按"无法解析"处理，不当成网络故障', async 
     headers: { 'content-type': 'application/json' },
   });
   try {
-    const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+    const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
     assert.deepEqual(res.body.errors, ['余额接口返回了无法解析的内容']);
   } finally {
     globalThis.fetch = originalFetch;
@@ -503,7 +503,7 @@ test('账户不可用时给出可行动的文案', async () => {
     balance_infos: [{ total_balance: '1.00', currency: 'CNY' }],
   }), { status: 200, headers: { 'content-type': 'application/json' } });
   try {
-    const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+    const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
     assert.deepEqual(res.body.errors, ['账户当前不可用']);
   } finally {
     globalThis.fetch = originalFetch;
@@ -519,7 +519,7 @@ test('官方路由上的模型给单价，第三方路由上的模型不给', as
   try {
     const official = makeCtx({ provider: 'deepseek-official', model: 'deepseek-flash' });
     apply(official.ctx);
-    const a = await call(official.routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+    const a = await call(official.routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
     assert.equal(a.body.tier.known, true);
     // 单价随峰谷时段变化（高峰 2 / 空闲 1），断言"是表里的数"而不是某个具体值。
     assert.ok([1, 2].includes(a.body.tier.input), `单价应来自价格表，实际 ${a.body.tier.input}`);
@@ -527,7 +527,7 @@ test('官方路由上的模型给单价，第三方路由上的模型不给', as
 
     const router = makeCtx({ provider: 'workbuddy', model: 'deepseek-v4.1-flash' });
     apply(router.ctx);
-    const b = await call(router.routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+    const b = await call(router.routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
     assert.equal(b.body.tier.known, false, '第三方路由的模型不该计价');
   } finally {
     globalThis.fetch = originalFetch;
@@ -537,11 +537,11 @@ test('官方路由上的模型给单价，第三方路由上的模型不给', as
 test('假期路由也只接受本机来源', async () => {
   const { ctx, routes } = makeCtx();
   apply(ctx);
-  const route = routes.get('/api/deepseek-usage/holidays');
-  const ok = await call(route, makeReq({ host: '127.0.0.1:64452' }, '/api/deepseek-usage/holidays'));
+  const route = routes.get('/api/deepseek-usage-extended/holidays');
+  const ok = await call(route, makeReq({ host: '127.0.0.1:64452' }, '/api/deepseek-usage-extended/holidays'));
   assert.equal(ok.status, 200);
   assert.ok(Array.isArray(ok.body.ranges));
-  const denied = await call(route, makeReq({ host: 'evil.example' }, '/api/deepseek-usage/holidays'));
+  const denied = await call(route, makeReq({ host: 'evil.example' }, '/api/deepseek-usage-extended/holidays'));
   assert.equal(denied.status, 403);
 });
 
@@ -560,7 +560,7 @@ test('当前 provider 是 moonshotai 时返回 moonshot 余额，不是 DeepSeek
     refs: { MOONSHOT_API_KEY: 'sk-moonshot' },
   });
   apply(ctx);
-  const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(res.status, 200);
   assert.equal(res.body.provider.id, 'moonshotai');
   assert.equal(res.body.provider.kind, 'balance');
@@ -585,7 +585,7 @@ test('订阅制 provider 返回最紧窗口的百分比，不返回余额', asyn
     refs: { OPENCODE_API_KEY: 'sk-oc' },
   });
   apply(ctx);
-  const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(res.body.provider.kind, 'usage');
   assert.equal(res.body.balance.total, null, '订阅制没有余额，必须是 null 而不是 0');
   assert.equal(res.body.usage.windows.length, 3);
@@ -610,7 +610,7 @@ test('订阅制路由上的 DeepSeek 模型：仍返回峰谷时段，但 known=
     refs: { OPENCODE_GO_API_KEY: 'sk-oc-go' },
   });
   apply(ctx);
-  const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(res.body.provider.kind, 'usage');
   assert.equal(res.body.tier.known, false, '订阅制不走按 token 计价');
   assert.ok(res.body.tier.window === 'peak' || res.body.tier.window === 'idle', '仍应给出峰谷时段');
@@ -632,7 +632,7 @@ test('订阅制路由上的非 DeepSeek 模型：不虚构峰谷时段', async (
     refs: { OPENCODE_GO_API_KEY: 'sk-oc-go' },
   });
   apply(ctx);
-  const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(res.body.tier.window, null);
   assert.equal(res.body.next.at, null);
 });
@@ -641,7 +641,7 @@ test('provider 没有可查接口时卡片置空并说明原因，不显示任�
   resetFetch();
   const { ctx, routes } = makeCtx({ provider: 'google' });
   apply(ctx);
-  const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(res.body.provider.kind, 'none');
   assert.equal(res.body.provider.reason, 'cloudAuthOnly');
   assert.equal(res.body.balance.total, null);
@@ -656,7 +656,7 @@ test('未配密钥时文案点名该配的引用', async () => {
   resetFetch();
   const { ctx, routes } = makeCtx({ provider: 'moonshotai', refs: {} });
   apply(ctx);
-  const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(res.body.balance.total, null);
   assert.deepEqual(res.body.errors, ['未配置 MOONSHOTAI_API_KEY']);
 });
@@ -665,7 +665,7 @@ test('OAuth provider：未填令牌时提示填写，不猜数字', async () => 
   resetFetch();
   const { ctx, routes } = makeCtx({ provider: 'anthropic', refs: {} });
   apply(ctx);
-  const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(res.body.provider.kind, 'oauth');
   assert.equal(res.body.usage, null);
   assert.deepEqual(res.body.errors, ['尚未填写该提供商的 OAuth 令牌']);
@@ -691,7 +691,7 @@ test('OAuth provider：填了令牌后按限流头给出 5h/7d', async () => {
     refs: { DSH_USAGE_CLAUDE_OAUTH_TOKEN: 'sk-ant-oat01-test' },
   });
   apply(ctx);
-  const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
   assert.deepEqual(res.body.errors, []);
   assert.deepEqual(res.body.usage.windows.map((w) => w.key), ['5h', '7d']);
   assert.equal(res.body.usage.windows[0].percent, 33);
@@ -707,7 +707,7 @@ test('账户缓存按 provider + Key 分桶：换 provider 不命中旧读数', 
   };
   const { ctx, routes } = makeCtx({ provider: 'moonshotai', refs: { MOONSHOT_API_KEY: 'sk-a' } });
   apply(ctx);
-  const route = routes.get('/api/deepseek-usage');
+  const route = routes.get('/api/deepseek-usage-extended');
   const first = await call(route, makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(first.body.balance.total, 7);
   const moonshotCalls = upstreamCalls.length;
@@ -730,7 +730,7 @@ test('/accounts：映射元数据与 OAuth 令牌状态，不查上游', async (
     ],
   });
   apply(ctx);
-  const res = await call(routes.get('/api/deepseek-usage/accounts'), makeReq({ host: '127.0.0.1:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended/accounts'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(res.status, 200);
   assert.equal(upstreamCalls.length, 0, '插件页元数据不查上游');
 
@@ -762,7 +762,7 @@ test('/accounts：只在 DSH 里检测到 Claude / Codex 时列出令牌状态',
     registered: [{ id: 'moonshotai', name: 'Moonshot' }],
   });
   apply(absent.ctx);
-  const none = await call(absent.routes.get('/api/deepseek-usage/accounts'), makeReq({ host: '127.0.0.1:64452' }));
+  const none = await call(absent.routes.get('/api/deepseek-usage-extended/accounts'), makeReq({ host: '127.0.0.1:64452' }));
   assert.deepEqual(none.body.oauth, []);
 
   // 注册了 anthropic 路由 —— 只列它，Codex 仍不出现。
@@ -772,7 +772,7 @@ test('/accounts：只在 DSH 里检测到 Claude / Codex 时列出令牌状态',
     registered: [{ id: 'anthropic', name: 'Anthropic' }],
   });
   apply(partial.ctx);
-  const some = await call(partial.routes.get('/api/deepseek-usage/accounts'), makeReq({ host: '127.0.0.1:64452' }));
+  const some = await call(partial.routes.get('/api/deepseek-usage-extended/accounts'), makeReq({ host: '127.0.0.1:64452' }));
   assert.deepEqual(some.body.oauth.map((item) => item.id), ['anthropic']);
   assert.equal(some.body.oauth[0].configured, false);
 });
@@ -784,7 +784,7 @@ test('/accounts：映射到 OAuth 目标时也给出令牌状态', async () => {
     registered: [{ id: 'dsh-codex', name: 'Codex (third-party)' }],
   });
   apply(ctx, { providerAliases: [{ provider: 'dsh-codex', capability: 'openai-codex' }] });
-  const res = await call(routes.get('/api/deepseek-usage/accounts'), makeReq({ host: '127.0.0.1:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended/accounts'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(res.status, 200);
   assert.equal(upstreamCalls.length, 0);
   assert.deepEqual(res.body.oauth, [{ id: 'openai-codex', displayName: 'OpenAI Codex', configured: false }]);
@@ -799,7 +799,7 @@ test('/accounts：chatgpt-codex 路由按 Codex 能力给出令牌状态', async
     registered: [{ id: 'chatgpt-codex', name: 'ChatGPT Codex' }],
   });
   apply(ctx);
-  const res = await call(routes.get('/api/deepseek-usage/accounts'), makeReq({ host: '127.0.0.1:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended/accounts'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(res.status, 200);
   assert.deepEqual(res.body.oauth, [{ id: 'openai-codex', displayName: 'OpenAI Codex', configured: true }]);
   assert.deepEqual(res.body.unmapped, [], '别名路由是内置支持的，不是未识别');
@@ -827,7 +827,7 @@ test('用户映射到 OAuth 目标：按订阅令牌读取，并带 Codex 账号
     registered: [{ id: 'dsh-codex', name: 'Codex (third-party)' }],
   });
   apply(ctx, { providerAliases: [{ provider: 'dsh-codex', capability: 'openai-codex' }] });
-  const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(res.body.provider.id, 'dsh-codex');
   assert.equal(res.body.provider.kind, 'oauth');
   assert.equal(res.body.provider.via, 'alias');
@@ -842,10 +842,10 @@ test('用户映射到 OAuth 目标：按订阅令牌读取，并带 Codex 账号
 test('/accounts：只接受本机 GET', async () => {
   const { ctx, routes } = makeCtx();
   apply(ctx);
-  const route = routes.get('/api/deepseek-usage/accounts');
-  const denied = await call(route, makeReq({ host: 'evil.example' }, '/api/deepseek-usage/accounts'));
+  const route = routes.get('/api/deepseek-usage-extended/accounts');
+  const denied = await call(route, makeReq({ host: 'evil.example' }, '/api/deepseek-usage-extended/accounts'));
   assert.equal(denied.status, 403);
-  const post = await call(route, makeReq({}, '/api/deepseek-usage/accounts', 'POST'));
+  const post = await call(route, makeReq({}, '/api/deepseek-usage-extended/accounts', 'POST'));
   assert.equal(post.status, 405);
 });
 
@@ -863,10 +863,10 @@ test('/token：写入后立即可查，清除后回到未填写', async () => {
   ctx.credentials.unset = async (ref) => { delete stored[ref.name]; };
   ctx.credentials.resolve = async (ref) => (stored[ref.name] === undefined ? undefined : { value: stored[ref.name] });
   apply(ctx);
-  const tokenRoute = routes.get('/api/deepseek-usage/token');
+  const tokenRoute = routes.get('/api/deepseek-usage-extended/token');
 
   // 写之前：未填写。
-  const before = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+  const before = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
   assert.deepEqual(before.body.errors, ['尚未填写该提供商的 OAuth 令牌']);
 
   const written = await call(tokenRoute, makePost({ provider: 'anthropic', token: 'sk-ant-oat01-abc' }));
@@ -876,7 +876,7 @@ test('/token：写入后立即可查，清除后回到未填写', async () => {
   assert.ok(!JSON.stringify(written.body).includes('sk-ant-oat01-abc'), '响应不得回传令牌');
 
   // 插件页的令牌状态跟着变，但响应里没有令牌本身。
-  const page = await call(routes.get('/api/deepseek-usage/accounts'), makeReq({ host: '127.0.0.1:64452' }));
+  const page = await call(routes.get('/api/deepseek-usage-extended/accounts'), makeReq({ host: '127.0.0.1:64452' }));
   assert.deepEqual(page.body.oauth, [{ id: 'anthropic', displayName: 'Claude Code', configured: true }]);
   assert.ok(!JSON.stringify(page.body).includes('sk-ant-oat01-abc'));
 
@@ -888,10 +888,10 @@ test('/token：写入后立即可查，清除后回到未填写', async () => {
 test('/token：只接受本机 POST 与白名单内的 provider', async () => {
   const { ctx, routes } = makeCtx();
   apply(ctx);
-  const route = routes.get('/api/deepseek-usage/token');
-  const denied = await call(route, makeReq({ host: 'evil.example' }, '/api/deepseek-usage/token', 'POST'));
+  const route = routes.get('/api/deepseek-usage-extended/token');
+  const denied = await call(route, makeReq({ host: 'evil.example' }, '/api/deepseek-usage-extended/token', 'POST'));
   assert.equal(denied.status, 403);
-  const get = await call(route, makeReq({ host: '127.0.0.1:64452' }, '/api/deepseek-usage/token'));
+  const get = await call(route, makeReq({ host: '127.0.0.1:64452' }, '/api/deepseek-usage-extended/token'));
   assert.equal(get.status, 405);
   const unknown = await call(route, makePost({ provider: 'workbuddy', token: 'x' }));
   assert.equal(unknown.status, 400);
@@ -910,7 +910,7 @@ test('上游异常不会把异常原文送到浏览器（多提供商路径）',
   // 复用前一个用例的 Key 会命中它的成功读数。
   const { ctx, routes } = makeCtx({ provider: 'moonshotai', refs: { MOONSHOT_API_KEY: 'sk-network-failure' } });
   apply(ctx);
-  const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(res.status, 200);
   assert.deepEqual(res.body.errors, ['账户接口无法连接']);
   assert.ok(!JSON.stringify(res.body).includes('10.0.0.7'), '异常原文不得进响应');
@@ -924,7 +924,7 @@ test('非 DeepSeek provider 的按量计费模型：路由返回单价与计费�
   // 全天一价的 provider：有单价、币种，tier.window 为 null，不带倒计时。
   const zai = makeCtx({ provider: 'zai', model: 'glm-4.6' });
   apply(zai.ctx);
-  const flat = await call(zai.routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+  const flat = await call(zai.routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(flat.body.tier.known, true, '表里的模型应计价');
   assert.equal(flat.body.tier.currency, 'USD');
   assert.equal(flat.body.tier.input, 0.6);
@@ -935,7 +935,7 @@ test('非 DeepSeek provider 的按量计费模型：路由返回单价与计费�
   // 有分时段计费的 provider：返回当前区间与下一次切换时刻。
   const gateway = makeCtx({ provider: 'openrouter', model: 'deepseek/deepseek-v4.1-flash-1017' });
   apply(gateway.ctx);
-  const windowed = await call(gateway.routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+  const windowed = await call(gateway.routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(windowed.body.tier.known, true);
   assert.equal(windowed.body.tier.currency, 'USD');
   assert.ok(['peak', 'idle'].includes(windowed.body.tier.window), `应带区间，实际 ${windowed.body.tier.window}`);
@@ -945,7 +945,7 @@ test('非 DeepSeek provider 的按量计费模型：路由返回单价与计费�
   // 两块表的模型都查不到时，和以前一样不计价。
   const unknown = makeCtx({ provider: 'zai', model: 'glm-9' });
   apply(unknown.ctx);
-  const none = await call(unknown.routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+  const none = await call(unknown.routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(none.body.tier.known, false);
 });
 
@@ -969,7 +969,7 @@ test('用户映射：第三方 provider 路由按映射的账户口径查询', a
   apply(ctx, {
     providerAliases: [{ provider: 'dsh-opencode-go', capability: 'opencode-go', refs: ['OPENCODE_API_KEY'] }],
   });
-  const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(res.body.provider.id, 'dsh-opencode-go', '响应里的 id 保持原始路由 id');
   assert.equal(res.body.provider.kind, 'usage');
   assert.equal(res.body.provider.via, 'alias');
@@ -988,7 +988,7 @@ test('没有映射时第三方 provider 仍显示不支持，不猜端点', asyn
   resetFetch();
   const { ctx, routes } = makeCtx({ provider: 'dsh-opencode-go', model: 'deepseek-v4.1-flash' });
   apply(ctx);
-  const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(res.body.provider.kind, 'none');
   assert.equal(res.body.provider.via, 'none');
   assert.deepEqual(res.body.errors, ['当前插件不支持 dsh-opencode-go']);
@@ -999,7 +999,7 @@ test('映射没写 refs 时按派生引用提示该配哪一个', async () => {
   resetFetch();
   const { ctx, routes } = makeCtx({ provider: 'dsh-opencode-go', refs: {} });
   apply(ctx, { providerAliases: [{ provider: 'dsh-opencode-go', capability: 'opencode-go' }] });
-  const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(res.body.provider.kind, 'usage');
   assert.deepEqual(res.body.errors, ['未配置 DSH_OPENCODE_GO_API_KEY']);
   assert.equal(upstreamCalls.length, 0);
@@ -1017,7 +1017,7 @@ test('/accounts：已映射的路由不再列为未识别', async () => {
   apply(ctx, {
     providerAliases: [{ provider: 'dsh-opencode-go', capability: 'opencode-go', refs: ['OPENCODE_API_KEY'] }],
   });
-  const res = await call(routes.get('/api/deepseek-usage/accounts'), makeReq({ host: '127.0.0.1:64452' }));
+  const res = await call(routes.get('/api/deepseek-usage-extended/accounts'), makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(res.status, 200);
   assert.equal(upstreamCalls.length, 0, '插件页元数据不查上游');
   assert.deepEqual(res.body.unmapped, [], '已映射的路由不再是未识别路由');
@@ -1036,7 +1036,7 @@ test('volatile 配置就地更新后，下一次请求立即使用新映射（�
     refs: { OPENCODE_API_KEY: 'sk-volatile-1' },
   });
   apply(ctx, config);
-  const route = routes.get('/api/deepseek-usage');
+  const route = routes.get('/api/deepseek-usage-extended');
 
   const before = await call(route, makeReq({ host: '127.0.0.1:64452' }));
   assert.equal(before.body.provider.kind, 'none');
@@ -1050,16 +1050,16 @@ test('volatile 配置就地更新后，下一次请求立即使用新映射（�
 
 test('lang 参数：只有中文标签用中文，其它语言与缺省都用英文', async () => {
   const cases = [
-    ['/api/deepseek-usage?lang=zh', '未配置 DEEPSEEK_API_KEY'],
-    ['/api/deepseek-usage?lang=zh-CN', '未配置 DEEPSEEK_API_KEY'],
-    ['/api/deepseek-usage?lang=en', 'DEEPSEEK_API_KEY is not configured'],
-    ['/api/deepseek-usage?lang=ja', 'DEEPSEEK_API_KEY is not configured'],
-    ['/api/deepseek-usage', 'DEEPSEEK_API_KEY is not configured'],
+    ['/api/deepseek-usage-extended?lang=zh', '未配置 DEEPSEEK_API_KEY'],
+    ['/api/deepseek-usage-extended?lang=zh-CN', '未配置 DEEPSEEK_API_KEY'],
+    ['/api/deepseek-usage-extended?lang=en', 'DEEPSEEK_API_KEY is not configured'],
+    ['/api/deepseek-usage-extended?lang=ja', 'DEEPSEEK_API_KEY is not configured'],
+    ['/api/deepseek-usage-extended', 'DEEPSEEK_API_KEY is not configured'],
   ];
   for (const [url, expected] of cases) {
     const { ctx, routes } = makeCtx({ key: null });
     apply(ctx);
-    const res = await call(routes.get('/api/deepseek-usage'), makeReq({ host: '127.0.0.1:64452' }, url));
+    const res = await call(routes.get('/api/deepseek-usage-extended'), makeReq({ host: '127.0.0.1:64452' }, url));
     assert.equal(res.status, 200);
     assert.deepEqual(res.body.errors, [expected], url);
   }

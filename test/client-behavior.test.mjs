@@ -292,7 +292,7 @@ function makePendingFetch() {
   globalThis.fetch = (url) => new Promise((resolve) => pending.push({ url, resolve }));
   return {
     pending,
-    usage: () => pending.filter((p) => p.url.startsWith('/api/deepseek-usage?')),
+    usage: () => pending.filter((p) => p.url.startsWith('/api/deepseek-usage-extended?')),
   };
 }
 
@@ -421,7 +421,7 @@ test('宿主返回的假期表覆盖内置表：峰谷判定跟着宿主走', as
   });
   await flush();
 
-  const usage = pending.find((p) => p.url.startsWith('/api/deepseek-usage?'));
+  const usage = pending.find((p) => p.url.startsWith('/api/deepseek-usage-extended?'));
   usage.resolve({
     ok: true,
     status: 200,
@@ -708,7 +708,7 @@ test('不可查的 provider：卡片给出「去映射」，点击直接打开�
   const button = nodesOf(out).find((n) => n.type === 'button' && (n.children ?? []).join('') === '去映射');
   assert.ok(button, `不支持时应有「去映射」按钮，实际 ${textOf(out)}`);
   button.props.onClick({ stopPropagation() {} });
-  assert.deepEqual(opened, ['deepseek-usage'], '应跳到 DeepSeek 用量设置分区');
+  assert.deepEqual(opened, ['deepseek-usage-extended'], '应跳到 DeepSeek 用量设置分区');
 });
 
 test('不可查的 provider：没有设置外壳时不显示「去映射」', async () => {
@@ -782,7 +782,7 @@ test('设置面板：注册 DeepSeek 用量子项，导航标题随语言变化'
   const slots = loadSlots(runtime, 'zh');
   assert.equal(typeof slots['settings.section'], 'function', '设置项必须注册');
   const options = slots.sectionOptions();
-  assert.equal(options.id, 'deepseek-usage');
+  assert.equal(options.id, 'deepseek-usage-extended');
   assert.equal(options.order, 16);
   assert.equal(options.label(), 'DeepSeek 用量');
   slots.localeState.active = 'ja';
@@ -1213,7 +1213,7 @@ test('设置页：从 configForms 取表单并渲染映射编辑器', async () =
     mutate: async (ops) => { writes.push(ops); return true; },
   };
   const services = {
-    configForms: { get: (id) => (id === 'deepseek-usage' ? controller : undefined) },
+    configForms: { get: (id) => (id === 'deepseek-usage-extended' ? controller : undefined) },
   };
   const Slot = loadSlots(runtime, 'zh', services)['settings.section'];
   assert.equal(typeof Slot, 'function', '设置项必须注册');
@@ -1246,7 +1246,7 @@ test('非中文语言（ja）按英文渲染，并向宿主请求 en', async () 
   const Comp = loadClient(runtime, 'ja');
   renderCard(Comp, runtime);
 
-  const usage = pending.filter((p) => p.url.startsWith('/api/deepseek-usage?'));
+  const usage = pending.filter((p) => p.url.startsWith('/api/deepseek-usage-extended?'));
   assert.equal(usage.length, 1, '挂载后应发出一次余额请求');
   assert.ok(usage[0].url.endsWith('?lang=en'), `非中文语言应请求 en，实际 ${usage[0].url}`);
 
@@ -1264,10 +1264,10 @@ test('DSH 语言切换后立即按新语言重取一次', async () => {
   const runtime = makeRuntime();
   const slots = loadSlots(runtime, 'zh');
   const Comp = slots['sidebar.footer.action'];
-  const usage = () => pending.filter((p) => p.url.startsWith('/api/deepseek-usage?'));
+  const usage = () => pending.filter((p) => p.url.startsWith('/api/deepseek-usage-extended?'));
   renderCard(Comp, runtime);
 
-  assert.equal(usage()[0].url, '/api/deepseek-usage?lang=zh');
+  assert.equal(usage()[0].url, '/api/deepseek-usage-extended?lang=zh');
   usage()[0].resolve(stateResponse(false, null));
   await flush();
 
